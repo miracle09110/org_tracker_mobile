@@ -1,17 +1,18 @@
-//import 'dart:io';
-
 import 'package:flutter/material.dart';
-//import 'package:image_picker/image_picker.dart';
-import 'dart:async';
-
+import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
+import 'package:graphql_flutter/graphql_flutter.dart';
+import '../customwidgets/CustomTextField.dart';
+import '../util/validator_util.dart';
+import '../models/Activity.dart';
 
 class AddActivityState extends State<AddActivityPage>{
 
   final _formKey = GlobalKey<FormState>();
-  DateTime selectedDate = DateTime.now();
-  DateTime selectedEndDate = DateTime.now();
-  TimeOfDay selectedStartTime = TimeOfDay.now();
-  TimeOfDay selectedEndTime = TimeOfDay.now();
+  Activity _activity = new Activity();
+  String _startDate ="";
+  String _endDate ="";
+  String _startTime ="";
+  String _endTime ="";
 //  File _eventImage;
 
   @override
@@ -20,75 +21,223 @@ class AddActivityState extends State<AddActivityPage>{
       appBar: generateHeader(context),
       body: Container(
               child: SingleChildScrollView(
-                child: generateForm(),
+                child: Mutation(
+                  options: MutationOptions(
+                    documentNode: gql(""),
+                    onCompleted: (dynamic value){
+                      _formKey.currentState.reset();
+                      Scaffold.of(context)
+                          .showSnackBar(SnackBar(
+                            content: Text('Activity Successfully Added!')
+                         )
+                      );
+                    },
+                    onError:  (dynamic value){
+                      Scaffold.of(context)
+                          .showSnackBar(SnackBar(
+                            backgroundColor: Colors.red,
+                            content: Text('Something went wrong!')
+                          )
+                      );
+                    }
+                  ),
+                  builder: (RunMutation addActivity, QueryResult addedActivity){
+
+
+                    if(addedActivity.loading){
+                      return
+                      Container(
+                        margin: EdgeInsets.only(
+                          top: MediaQuery.of(context).size.height/ 4
+                        ),
+                        alignment: Alignment.center,
+                        child:  Center(
+                          child: Column(
+                            children: <Widget>[
+                              CircularProgressIndicator(),
+                              Text('Adding your Activity...')
+                            ],
+                          ) ,
+                        ),
+                      );
+
+                    }
+
+                    return generateForm(addActivity);
+                  },
+                )
               )
           )
     );
   }
 
-  Widget generateForm(){
+  Widget generateForm(addActivity){
     return Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            TextFormField(
-              decoration: InputDecoration(labelText: 'Event Name'),
-            ),
-//            SizedBox(height: 25.0),
-//            RaisedButton(
-//              onPressed: _optionsDialogBox,
-//              child: Icon(Icons.add_a_photo),
-//            ),
             SizedBox(height: 25.0),
-            TextFormField(
-              decoration: InputDecoration(labelText: 'Venue'),
+            CustomTextField(
+              icon: Icon(Icons.event),
+              hint: "Event Name",
+              fontSize: 15,
+              validator: emptyCheck,
+              onSaved: (value){
+                this._activity.eventName = value;
+              },
             ),
             SizedBox(height: 25.0),
-            Text(selectedDate != null ? "Event Start Date: "
-                + "${selectedDate.year.toString()}-${selectedDate.month.toString().padLeft(2,'0')}-${selectedDate.day.toString().padLeft(2,'0')}"
-                : ""),
-            RaisedButton(
-              onPressed: () => _selectDate(context),
-              child: Text("Select Start Date"),
+            Center(
+                child:ButtonTheme(
+                  minWidth: MediaQuery.of(context).size.width - 100 ,
+                  height: 30,
+                  child: FlatButton(
+                      color: Theme.of(context).primaryColor,
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                          BorderRadius.circular(20.0)),
+                      onPressed: () {
+                        DatePicker.showDateTimePicker(context,
+                            showTitleActions: true,
+                            minTime: DateTime(1970, 1, 1),
+                            maxTime: DateTime.now(),
+                            onChanged: (date) {
+                              print('Start Changed $date');
+                            }, onConfirm: (date) {
+                              setStartDateAndTime(date);
+                            },
+                            currentTime: DateTime.now(),
+                            locale: LocaleType.en
+                        );
+                      },
+                      child: Text(
+                        'Start: $_startDate $_startTime',
+                        style: TextStyle(color: Colors.white),
+                      )
+                  ),
+                )
             ),
-            SizedBox(height: 25.0),
-            Text(selectedEndDate != null ? "Event End Date: "
-                + "${selectedEndDate.year.toString()}-${selectedEndDate.month.toString().padLeft(2,'0')}-${selectedEndDate.day.toString().padLeft(2,'0')}"
-                : ""),
-            RaisedButton(
-              onPressed: () => _selectEndDate(context),
-              child: Text("Select End Date"),
+            Center(
+                child:ButtonTheme(
+                  minWidth: MediaQuery.of(context).size.width - 100 ,
+                  height: 30,
+                  child: FlatButton(
+                      color: Theme.of(context).primaryColor,
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                          BorderRadius.circular(20.0)),
+                      onPressed: () {
+                        DatePicker.showDateTimePicker(context,
+                            showTitleActions: true,
+                            minTime: DateTime(1970, 1, 1),
+                            maxTime: DateTime.now(),
+                            onChanged: (date) {
+                              print('End Changed $date');
+                            }, onConfirm: (date) {
+                              setEndDateAndTime(date);
+                            },
+                            currentTime: DateTime.now(),
+                            locale: LocaleType.en
+                        );
+                      },
+                      child: Text(
+                        'End: $_endDate $_endTime',
+                        style: TextStyle(color: Colors.white),
+                      )
+                  ),
+                )
             ),
-            SizedBox(height: 25.0),
-            Text("Event Start Time: ${selectedStartTime}"),
-            RaisedButton(
-              onPressed: () => _selectStartTime(context),
-              child: Text("Start time of Event"),
+            SizedBox(height: 10.0),
+            CustomTextField(
+              icon: Icon(Icons.place),
+              hint: "Venue",
+              fontSize: 15,
+              validator: emptyCheck,
+              onSaved: (value){
+                this._activity.venue= value;
+              },
             ),
-            SizedBox(height: 25.0),
-            Text("Event End Time: ${selectedEndTime}"),
-            RaisedButton(
-              onPressed: () => _selectEndTime(context),
-              child: Text("Start time of Event"),
+            Container(
+                margin: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(3.0),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.of(context).primaryColor),
+                  borderRadius: BorderRadius.all(
+                      Radius.circular(30.0) //
+                  ),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Text('Promotional Image',
+                        style: TextStyle(fontSize: 15),
+                      ),
+                      FlatButton(
+                        child: Icon(Icons.image,
+                          size: 150,
+                        ),
+                      )
+                    ],
+                  ),
+                )
             ),
-            SizedBox(height: 25.0),
-            TextFormField(
-              decoration: InputDecoration(labelText: 'Description'),
-              keyboardType: TextInputType.multiline,
-              maxLines: null,
+            Container(
+              margin: EdgeInsets.only(
+                bottom: 20,
+                left: 20,
+                right: 20
+              ),
+              padding: EdgeInsets.all(10.0),
+              decoration: BoxDecoration(
+                border: Border.all(color: Theme.of(context).primaryColor),
+                borderRadius: BorderRadius.all(
+                    Radius.circular(30.0) //
+                ),
+              ),
+              child: SizedBox(
+                height: 180,
+                child: TextFormField(
+                  maxLines: 10,
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: ' Description...',
+                  ),
+                  onSaved: (description){
+                    this._activity.description = description;
+                  },
+                  validator: emptyCheck,
+                ),
+              )
             ),
-             RaisedButton(
-                onPressed: () {
-                  if (_formKey.currentState.validate()) {
-
-                    Scaffold
-                        .of(context)
-                        .showSnackBar(SnackBar(content: Text('Processing Data')));
-                  }
-                },
-              child: Text('Submit'),
+            Container(
+              margin: EdgeInsets.only(
+                  bottom: 20,
+              ),
+              child:  Center(
+                  child: ButtonTheme(
+                    minWidth: MediaQuery.of(context).size.width - 100 ,
+                    height: 50,
+                    child: RaisedButton(
+                      textColor: Colors.white,
+                      color: Theme.of(context).primaryColor,
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                          BorderRadius.circular(20.0)
+                      ),
+                      onPressed: () {
+                        if (_formKey.currentState.validate()) {
+                          _formKey.currentState.save();
+                          addActivity();
+                        }
+                      },
+                      child: Text('Submit'),
+                    ),
+                  )
+              ),
             )
+
           ],
         ),
     );
@@ -104,107 +253,26 @@ class AddActivityState extends State<AddActivityPage>{
     );
   }
 
-  Future<Null> _selectDate(BuildContext context) async {
-    final DateTime picked = await showDatePicker(
-        context: context,
-        initialDate: selectedDate,
-        firstDate: DateTime(2015, 8),
-        lastDate: DateTime(2101));
-    if (picked != null && picked != selectedDate)
+  void setStartDateAndTime(value){
+      List<String> splitDateTime = value.toString().split(" ");
       setState(() {
-        selectedDate = picked;
+        _startDate = splitDateTime[0];
+      });
+
+      setState(() {
+        _startTime = splitDateTime[1].substring(0,splitDateTime[1].lastIndexOf(":"));
       });
   }
 
-  Future<Null> _selectEndDate(BuildContext context) async {
-    final DateTime picked = await showDatePicker(
-        context: context,
-        initialDate: selectedEndDate,
-        firstDate: DateTime(2015, 8),
-        lastDate: DateTime(2101));
-    if (picked != null && picked != selectedEndDate)
-      setState(() {
-        selectedEndDate = picked;
-      });
-  }
+  void setEndDateAndTime(value){
+    List<String> splitDateTime = value.toString().split(" ");
+    setState(() {
+      this._endDate = splitDateTime[0];
+    });
 
-  Future<Null> _selectStartTime(BuildContext context) async {
-    final TimeOfDay picked_s = await showTimePicker(
-        context: context,
-        initialTime: selectedStartTime, builder: (BuildContext context, Widget child) {
-      return MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child,
-      );});
-
-    if (picked_s != null && picked_s != selectedStartTime )
-      setState(() {
-        selectedStartTime = picked_s;
-      });
-  }
-
-  Future<Null> _selectEndTime(BuildContext context) async {
-    final TimeOfDay picked_s = await showTimePicker(
-        context: context,
-        initialTime: selectedEndTime, builder: (BuildContext context, Widget child) {
-      return MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child,
-      );});
-
-    if (picked_s != null && picked_s != selectedEndTime )
-      setState(() {
-        selectedEndTime = picked_s;
-      });
-  }
-
-
-//  Future<void> _optionsDialogBox() {
-//    return showDialog(context: context,
-//        builder: (BuildContext context) {
-//          return AlertDialog(
-//            content: SingleChildScrollView(
-//              child: ListBody(
-//                children: <Widget>[
-//                  GestureDetector(
-//                    child: Text('Take a picture'),
-//                    onTap: openCamera,
-//                  ),
-//                  Padding(
-//                    padding: EdgeInsets.all(8.0),
-//                  ),
-//                  GestureDetector(
-//                    child: Text('Select from gallery'),
-//                    onTap: openGallery,
-//                  ),
-//                ],
-//              ),
-//            ),
-//          );
-//        });
-//  }
-//
-//  Future openCamera() async {
-//    var image = await ImagePicker.pickImage(source: ImageSource.camera);
-//
-//    setState(() {
-//      _eventImage = image;
-//    });
-//  }
-//
-//  Future openGallery() async {
-//    File image = await ImagePicker.pickImage(source: ImageSource.gallery);
-//
-//    setState(() {
-//      _eventImage = image;
-//    });
-//  }
-
-  String validate(String value){
-      if (value.isEmpty) {
-        return 'Please enter some text';
-      }
-      return null;
+    setState(() {
+      this._endTime = splitDateTime[1].substring(0,splitDateTime[1].lastIndexOf(":"));
+    });
   }
 }
 

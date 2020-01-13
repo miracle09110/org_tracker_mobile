@@ -7,7 +7,7 @@ import '../customwidgets/sign_up/MemberConfirmationDialog.dart';
 import '../customwidgets/sign_up/MemberRegisteredDialog.dart';
 import '../customwidgets/GenericErrorDialog.dart';
 import '../models/Member.dart';
-import '../enum/register_state.dart';
+import '../enum/form_state.dart';
 import '../util/validator_util.dart';
 
 

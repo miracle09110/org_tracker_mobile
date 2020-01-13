@@ -6,11 +6,16 @@ class CustomTextField extends StatelessWidget {
         this.hint,
         this.obsecure = false,
         this.validator,
-        this.onSaved});
+        this.onSaved,
+        this.fontSize = 20,
+        this.keyboardType = TextInputType.text
+      });
   final FormFieldSetter<String> onSaved;
   final Icon icon;
   final String hint;
   final bool obsecure;
+  final double fontSize;
+  final TextInputType keyboardType;
   final FormFieldValidator<String> validator;
   @override
   Widget build(BuildContext context) {
@@ -21,11 +26,12 @@ class CustomTextField extends StatelessWidget {
         validator: validator,
         autofocus: true,
         obscureText: obsecure,
+        keyboardType: keyboardType,
         style: TextStyle(
           fontSize: 20,
         ),
         decoration: InputDecoration(
-            hintStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            hintStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: fontSize),
             hintText: hint,
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
@@ -47,7 +53,8 @@ class CustomTextField extends StatelessWidget {
                 child: icon,
               ),
               padding: EdgeInsets.only(left: 30, right: 10),
-            )),
+            )
+        ),
       ),
     );
   }
