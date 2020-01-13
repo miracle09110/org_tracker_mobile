@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../customwidgets/CustomTextField.dart';
+import '../customwidgets/login/CustomTextField.dart';
 
 class LoginRegisterState extends State<LoginRegisterPage>{
   @override

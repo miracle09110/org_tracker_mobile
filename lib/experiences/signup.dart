@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:org_tracker/integrations/graphql/mutations/add_member.dart';
-import '../customwidgets/IndustryDropDown.dart';
-import '../customwidgets/ClusterDropDown.dart';
-import '../customwidgets/CircularProgressIndicatorWithText.dart';
+import '../customwidgets/sign_up/IndustryDropDown.dart';
+import '../customwidgets/sign_up/ClusterDropDown.dart';
+import '../customwidgets/sign_up/MemberConfirmationDialog.dart';
+import '../customwidgets/sign_up/MemberRegisteredDialog.dart';
+import '../customwidgets/GenericErrorDialog.dart';
 import '../models/Member.dart';
+import '../enum/register_state.dart';
+import '../util/validator_util.dart';
 
-enum Answers{YES, NO}
+
+
 
 class _SignUpState extends State<SignUpPage>{
 
@@ -22,24 +27,9 @@ class _SignUpState extends State<SignUpPage>{
     StepperType stepperType = StepperType.vertical;
     DateTime dob = DateTime.now();
     Member _member =  new Member();
+    bool registered = false;
+    REGISTER_STATE registerState = REGISTER_STATE.OPEN;
 
-
-    String validator(value){
-      if (value.isEmpty) {
-        return '*Required';
-      }
-      return null;
-    }
-
-    String _phoneNumberValidator(String value) {
-      Pattern pattern =
-          r"^(?:[+0]9)?[0-9]{10}$)";
-      RegExp regex = new RegExp(pattern);
-      if (!regex.hasMatch(value))
-        return 'Enter Valid Phone Number';
-      else
-        return null;
-    }
 
      Future<Null> _selectDate(BuildContext context) async {
        final DateTime picked = await showDatePicker(
@@ -54,94 +44,80 @@ class _SignUpState extends State<SignUpPage>{
          });
      }
 
-
-    void showUnfinisedDialog(BuildContext context){
-      Widget cancelButton = FlatButton(
-        child: Text("OK"),
-        onPressed:  () {
-          Navigator.of(context).pop();
-        },
-      );
-
-      AlertDialog alert = AlertDialog(
-        title: Text("Warning"),
-        content: Text("Please fill out all required sections to register a member"),
-        actions: [
-          cancelButton
-        ],
-      );
-
-
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return alert;
-        },
-      );
+    void goTo(int step){
+      setState(()=> currentStep = step);
     }
 
-    void _showConfirmationDialog (BuildContext context)  {
+    void resetForm(){
+      for (var i =0; i<_formKeys.length; i++){
+        _formKeys[i].currentState.reset();
+      }
+
+      goTo(0);
+    }
+
+    void switchFormState(REGISTER_STATE state){
+      setState(() {
+        this.registerState = state;
+      });
+    }
+
+    void _submitForm (BuildContext context)  {
 
      showDialog(
+          barrierDismissible: false,
           context: context,
           builder: (BuildContext context) {
             return Mutation(
                 options: MutationOptions(
-                  document: addMemberQuery,
+                  documentNode: gql(addMemberQuery),
+                  onCompleted: (dynamic resultData){
+                    switchFormState(REGISTER_STATE.SUCCESS);
+                  },
+                  onError: (dynamic errorData){
+                    print(errorData.toString());
+                    switchFormState(REGISTER_STATE.FAIL);
+                  }
                 ),
                 builder: (
                     RunMutation runMutation,
                     QueryResult result,
-                    )
-                {
-                  if(result.loading){
-                    return SimpleDialog(
-                        title: Text("Adding..."),
+                    ) {
+                  if (result.loading) {
+                    return SimpleDialog (
+                        title: Text ("Adding..."),
                         children: <Widget>[
-                          LinearProgressIndicator()
+                          LinearProgressIndicator ()
                         ]
                     );
                   }
 
-                  if(result.hasException){
-                    print(result.exception.toString());
+                  if (result.hasException) {
+                    print (result.exception.toString ());
                   }
 
-                  return SimpleDialog(
-                      title: Text("Confirm"),
-                      children: <Widget>[
-                        Row(
-                          children: <Widget>[
-                            SimpleDialogOption(
-                              child: Text("Yes"),
-                              onPressed: () =>{
-                                runMutation({
-                                  'first_name'      : this._member.name.firstName,
-                                  'last_name'       : this._member.name.lastName,
-                                  'middle_initial'  : this._member.name.middleInitial,
-                                  'nickname'        : this._member.name.nickname,
-                                  'email'           : this._member.contactInfo.email,
-                                  'phone_number'    : this._member.contactInfo.mobile,
-                                  'job_title'       : this._member.profession.jobTitle,
-                                  'employer'        : this._member.profession.employer,
-                                  'field'           : this._member.profession.field,
-                                  'batch'           : this._member.batch,
-                                  'status'          : this._member.status,
-                                  'cluster_id'      : this._member.clusterId,
-                                  'date_of_birth'   : this._member.dob
-                                })
-                              },
-                            ),
-                            SimpleDialogOption(
-                              child: new Text("No"),
-                              onPressed: (){
-                                Navigator.pop(context);
-                              },
-                            )
-                          ],
-                        )
-                      ]
-                  );
+                  switch(registerState){
+                    case REGISTER_STATE.SUCCESS:
+                      return MemberRegisteredDialog(
+                        memberInfo: _member,
+                        onConfirm: (){
+                            switchFormState(REGISTER_STATE.OPEN);
+                            resetForm();
+                            Navigator.of(context).pop();
+                        },
+                      );
+                      break;
+                    case REGISTER_STATE.FAIL:
+                      return GenericErrorDialog();
+                      break;
+                    case REGISTER_STATE.OPEN:
+                    default:
+                      return MemberConfirmationDialog(
+                        memberForm: _member,
+                        submit: runMutation,
+                      );
+                  }
+
                 },
             );
           },
@@ -172,21 +148,21 @@ class _SignUpState extends State<SignUpPage>{
                 Text('Personal Info'),
                 TextFormField(
                   decoration: InputDecoration(labelText: 'First Name'),
-                  validator: validator,
+                  validator: emptyCheck,
                   onSaved: (String value){
                     this._member.name.firstName = value;
                   },
                 ),
                 TextFormField(
                   decoration: InputDecoration(labelText: 'Surname'),
-                  validator: validator,
+                  validator: emptyCheck,
                   onSaved: (String value){
                     this._member.name.lastName = value;
                   },
                 ),
                 TextFormField(
                   decoration: InputDecoration(labelText: 'Middle Initial'),
-                  validator: validator,
+                  validator: emptyCheck,
                   onSaved: (String value){
                     this._member.name.middleInitial = value;
                   },
@@ -234,7 +210,7 @@ class _SignUpState extends State<SignUpPage>{
             children: <Widget>[
               TextFormField(
                 decoration: InputDecoration(labelText: 'Mobile Number'),
-                validator: validator,
+                validator: emptyCheck,
                 keyboardType: TextInputType.phone,
                 onSaved: (String value){
                   this._member.contactInfo.mobile = value;
@@ -243,7 +219,7 @@ class _SignUpState extends State<SignUpPage>{
               TextFormField(
                 decoration: InputDecoration(labelText: 'Email Address'),
                 keyboardType: TextInputType.emailAddress,
-                validator: validator,
+                validator: emptyCheck,
                 onSaved: (String value){
                   this._member.contactInfo.email = value;
                 },
@@ -269,7 +245,7 @@ class _SignUpState extends State<SignUpPage>{
               ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Year Graduated'),
-                validator: validator,
+                validator: emptyCheck,
                 onSaved: (String value){
                   this._member.batch = value;
                 },
@@ -289,14 +265,14 @@ class _SignUpState extends State<SignUpPage>{
             children: <Widget>[
               TextFormField(
                 decoration: InputDecoration(labelText: 'Job Title'),
-                validator: validator,
+                validator: emptyCheck,
                 onSaved: (String value){
                   this._member.profession.jobTitle = value;
                 },
               ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Employer'),
-                validator: validator,
+                validator: emptyCheck,
                 onSaved: (String value){
                   this._member.profession.employer = value;
                 },
@@ -313,21 +289,16 @@ class _SignUpState extends State<SignUpPage>{
       ),
     ];
 
-      void goTo(int step){
-        setState(()=> currentStep = step);
+      void transition(){
+        currentStep + 1 != steps.length ?
+        goTo(currentStep +1)
+            : _submitForm(context);
       }
-
-      void saveAndMoveToNext(){
-        _formKeys[currentStep].currentState.save();
-        goTo(currentStep +1);
-      }
-
 
       void next(){
         if (_formKeys[currentStep].currentState.validate()) {
-          currentStep + 1 != steps.length ?
-          saveAndMoveToNext()
-              : _showConfirmationDialog(context);
+          _formKeys[currentStep].currentState.save();
+          transition();
         }
       }
 
@@ -336,6 +307,7 @@ class _SignUpState extends State<SignUpPage>{
           goTo(currentStep - 1);
         }
       }
+
 
     return new Scaffold(
       appBar: AppBar(
@@ -364,6 +336,7 @@ class _SignUpState extends State<SignUpPage>{
     );
   }
 }
+
 
 
 class SignUpPage extends StatefulWidget{

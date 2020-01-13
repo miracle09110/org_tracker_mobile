@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import './Industries.dart';
+import 'Industries.dart';
 
 
 class IndustryDropDown extends StatefulWidget{
