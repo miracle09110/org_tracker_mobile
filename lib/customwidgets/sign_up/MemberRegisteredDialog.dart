@@ -28,9 +28,12 @@ class MemberRegisteredDialog extends StatelessWidget{
                 child: Column(
                   children: <Widget>[
                     Text('Maraming salamat kaibigan'),
-                    Text( 'You have successfully registered '),
-                    Text( memberInfo.name.firstName,
-                      style: TextStyle(fontSize: 17.0,fontWeight: FontWeight.bold),
+                    Text( 'You have successfully registered,'),
+                    Text( memberInfo.name.firstName.toUpperCase(),
+                      style: TextStyle(
+                          fontSize: 17.0,
+                          fontWeight: FontWeight.bold,
+                      ),
                     )
                   ],
                 )

@@ -25,24 +25,10 @@ class _SignUpState extends State<SignUpPage>{
     int currentStep = 0;
     bool submitting = false;
     StepperType stepperType = StepperType.vertical;
-    DateTime dob = DateTime.now();
     Member _member =  new Member();
     bool registered = false;
     REGISTER_STATE registerState = REGISTER_STATE.OPEN;
 
-
-     Future<Null> _selectDate(BuildContext context) async {
-       final DateTime picked = await showDatePicker(
-           context: context,
-           initialDate: DateTime(2000,1),
-           firstDate: DateTime(1950, 1),
-           lastDate: DateTime.now());
-       if (picked != null && picked != dob)
-         setState(() {
-           this._member.dob = picked.toString();
-           dob = picked;
-         });
-     }
 
     void goTo(int step){
       setState(()=> currentStep = step);
@@ -117,14 +103,13 @@ class _SignUpState extends State<SignUpPage>{
                         submit: runMutation,
                       );
                   }
-
                 },
             );
           },
         );
     }
 
-     @override
+    @override
     Widget build(BuildContext context) {
 
       isClicked(int step){
@@ -173,27 +158,16 @@ class _SignUpState extends State<SignUpPage>{
                     this._member.name.nickname = value;
                   },
                 ),
-                SizedBox(height: 25.0),
-                Container(
-                  alignment: Alignment.centerLeft,
-                  child: Column(
-                    children: <Widget>[
-                      Text(dob != null ? "Date of Birth: "
-                          + "${dob.year.toString()}-${dob.month.toString().padLeft(2,'0')}-${dob.day.toString().padLeft(2,'0')}"
-                          : "",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15.0,
-                            )
-                          ,
-                      ),
-                      SizedBox(height: 10.0),
-                      RaisedButton(
-                        onPressed: () => _selectDate(context),
-                        child: Text("Change Date of Birth"),
-                      ),
-                    ],
-                  )
+                TextFormField(
+                  decoration: InputDecoration(
+                      labelText: 'Date of Birth',
+                      hintText: 'YYYY-MM-DD'
+                  ),
+                  keyboardType: TextInputType.datetime,
+                  validator: dateValidator,
+                  onSaved: (String value){
+                    this._member.dob = value;
+                  },
                 )
               ],
             ),
@@ -210,7 +184,7 @@ class _SignUpState extends State<SignUpPage>{
             children: <Widget>[
               TextFormField(
                 decoration: InputDecoration(labelText: 'Mobile Number'),
-                validator: emptyCheck,
+                validator: phoneValidator,
                 keyboardType: TextInputType.phone,
                 onSaved: (String value){
                   this._member.contactInfo.mobile = value;
@@ -219,7 +193,7 @@ class _SignUpState extends State<SignUpPage>{
               TextFormField(
                 decoration: InputDecoration(labelText: 'Email Address'),
                 keyboardType: TextInputType.emailAddress,
-                validator: emptyCheck,
+                validator: emailValidator,
                 onSaved: (String value){
                   this._member.contactInfo.email = value;
                 },
@@ -245,7 +219,8 @@ class _SignUpState extends State<SignUpPage>{
               ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Year Graduated'),
-                validator: emptyCheck,
+                keyboardType: TextInputType.number,
+                validator: batchValidator,
                 onSaved: (String value){
                   this._member.batch = value;
                 },
