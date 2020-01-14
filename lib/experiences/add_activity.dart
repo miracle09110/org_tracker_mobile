@@ -2,18 +2,71 @@ import 'package:flutter/material.dart';
 import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import '../customwidgets/CustomTextField.dart';
+import '../integrations/graphql/mutations/activity.dart';
 import '../util/validator_util.dart';
 import '../models/Activity.dart';
+import '../enum/form_state.dart';
 
 class AddActivityState extends State<AddActivityPage>{
 
-  final _formKey = GlobalKey<FormState>();
+  GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  ACTIVITY_FORM_STATE _formState = ACTIVITY_FORM_STATE.OPEN;
   Activity _activity = new Activity();
-  String _startDate ="";
-  String _endDate ="";
-  String _startTime ="";
-  String _endTime ="";
+  String _startText = "";
+  String _endText = "";
 //  File _eventImage;
+
+  void reset(){
+    setState(() {
+      _activity = new Activity();
+      _startText = "";
+      _endText = "";
+    });
+  }
+
+  void setFormState(ACTIVITY_FORM_STATE state){
+    setState(() {
+      _formState = state;
+    });
+  }
+
+  void showResultDialog(text){
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog (
+
+            title:
+            Center(
+              child: Text(text) ,
+            ),
+            actions: <Widget>[
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    FlatButton (
+                      textColor: Theme.of(context).primaryColor,
+                      child: Text("OK"),
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                          BorderRadius.circular(20.0)),
+                      onPressed: () {
+                        Navigator.pop (context);
+                      },
+                    ),
+                  ],
+                ) ,
+
+            ],
+            shape: RoundedRectangleBorder(
+                borderRadius:
+                BorderRadius.circular(20.0)),
+          );
+        }
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,52 +76,46 @@ class AddActivityState extends State<AddActivityPage>{
               child: SingleChildScrollView(
                 child: Mutation(
                   options: MutationOptions(
-                    documentNode: gql(""),
+                    documentNode: gql(addActivityQuery),
                     onCompleted: (dynamic value){
-                      _formKey.currentState.reset();
-                      Scaffold.of(context)
-                          .showSnackBar(SnackBar(
-                            content: Text('Activity Successfully Added!')
-                         )
-                      );
+                      reset();
+                      setFormState(ACTIVITY_FORM_STATE.OPEN);
+                      showResultDialog('Activity Added!');
                     },
                     onError:  (dynamic value){
-                      Scaffold.of(context)
-                          .showSnackBar(SnackBar(
-                            backgroundColor: Colors.red,
-                            content: Text('Something went wrong!')
-                          )
-                      );
+                      showResultDialog('Pasensya.Please check WIFI and retry');
                     }
                   ),
                   builder: (RunMutation addActivity, QueryResult addedActivity){
 
-
-                    if(addedActivity.loading){
-                      return
-                      Container(
-                        margin: EdgeInsets.only(
-                          top: MediaQuery.of(context).size.height/ 4
-                        ),
-                        alignment: Alignment.center,
-                        child:  Center(
-                          child: Column(
-                            children: <Widget>[
-                              CircularProgressIndicator(),
-                              Text('Adding your Activity...')
-                            ],
-                          ) ,
-                        ),
-                      );
-
+                    switch(_formState){
+                      case ACTIVITY_FORM_STATE.LOADING:
+                        return Container(
+                          margin: EdgeInsets.only(
+                              top: MediaQuery.of(context).size.height/ 4
+                          ),
+                          alignment: Alignment.center,
+                          child:  Center(
+                            child: Column(
+                              children: <Widget>[
+                                CircularProgressIndicator(),
+                                Text('Adding your Activity...')
+                              ],
+                            ) ,
+                          ),
+                        );
+                      case ACTIVITY_FORM_STATE.FAIL:
+                      case ACTIVITY_FORM_STATE.OPEN:
+                      default:
+                        return generateForm(addActivity);
                     }
 
-                    return generateForm(addActivity);
                   },
                 )
               )
           )
     );
+
   }
 
   Widget generateForm(addActivity){
@@ -112,7 +159,7 @@ class AddActivityState extends State<AddActivityPage>{
                         );
                       },
                       child: Text(
-                        'Start: $_startDate $_startTime',
+                        'Start: $_startText',
                         style: TextStyle(color: Colors.white),
                       )
                   ),
@@ -142,7 +189,7 @@ class AddActivityState extends State<AddActivityPage>{
                         );
                       },
                       child: Text(
-                        'End: $_endDate $_endTime',
+                        'End: $_endText',
                         style: TextStyle(color: Colors.white),
                       )
                   ),
@@ -229,7 +276,17 @@ class AddActivityState extends State<AddActivityPage>{
                       onPressed: () {
                         if (_formKey.currentState.validate()) {
                           _formKey.currentState.save();
-                          addActivity();
+                          setFormState(ACTIVITY_FORM_STATE.LOADING);
+                          addActivity({
+                            'event_name' : _activity.eventName,
+                            'venue' : _activity.venue,
+                            'start_date' : _activity.startDate,
+                            'end_date': _activity.endDate,
+                            'start_time': _activity.startTime,
+                            'end_time': _activity.endTime,
+                            'image' : "place holder image",
+                            'description' :  _activity.description
+                          });
                         }
                       },
                       child: Text('Submit'),
@@ -255,23 +312,23 @@ class AddActivityState extends State<AddActivityPage>{
 
   void setStartDateAndTime(value){
       List<String> splitDateTime = value.toString().split(" ");
+      String date = splitDateTime[0];
+      String time = splitDateTime[1].substring(0,splitDateTime[1].lastIndexOf(":"));
       setState(() {
-        _startDate = splitDateTime[0];
-      });
-
-      setState(() {
-        _startTime = splitDateTime[1].substring(0,splitDateTime[1].lastIndexOf(":"));
+        _activity.startDate = date;
+        _activity.startTime = time;
+        _startText = date + " " + time;
       });
   }
 
   void setEndDateAndTime(value){
     List<String> splitDateTime = value.toString().split(" ");
+    String date = splitDateTime[0];
+    String time = splitDateTime[1].substring(0,splitDateTime[1].lastIndexOf(":"));
     setState(() {
-      this._endDate = splitDateTime[0];
-    });
-
-    setState(() {
-      this._endTime = splitDateTime[1].substring(0,splitDateTime[1].lastIndexOf(":"));
+      _activity.endDate = date;
+      _activity.endTime= time;
+      _endText = date + " " + time;
     });
   }
 }
