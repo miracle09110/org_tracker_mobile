@@ -1,5 +1,9 @@
+import 'dart:io';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import '../customwidgets/CustomTextField.dart';
 import '../integrations/graphql/mutations/activity.dart';
@@ -9,24 +13,56 @@ import '../enum/form_state.dart';
 
 class AddActivityState extends State<AddActivityPage>{
 
+  String apiEndPoint = "http://18.139.217.149:1973/api/v1.0.0/image";
   GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   ACTIVITY_FORM_STATE _formState = ACTIVITY_FORM_STATE.OPEN;
   Activity _activity = new Activity();
   String _startText = "";
   String _endText = "";
-//  File _eventImage;
+  File _eventImage;
 
   void reset(){
     setState(() {
       _activity = new Activity();
       _startText = "";
       _endText = "";
+      _eventImage = null;
     });
   }
 
   void setFormState(ACTIVITY_FORM_STATE state){
     setState(() {
       _formState = state;
+    });
+  }
+
+  Future getImage() async {
+
+    final imageSource = await showDialog<ImageSource>(
+        context: context,
+        builder: (context) =>
+            AlertDialog(
+              title: Text("Select the image source"),
+              actions: <Widget>[
+                MaterialButton(
+                  child: Text("Camera"),
+                  onPressed: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                MaterialButton(
+                  child: Text("Gallery"),
+                  onPressed: () => Navigator.pop(context, ImageSource.gallery),
+                )
+              ],
+            )
+    );
+
+    var image = await ImagePicker.pickImage(source: imageSource);
+
+    setState(() {
+      if(image != null){
+        _eventImage = image;
+        _activity.image = base64Encode(image.readAsBytesSync());
+      }
     });
   }
 
@@ -78,11 +114,15 @@ class AddActivityState extends State<AddActivityPage>{
                   options: MutationOptions(
                     documentNode: gql(addActivityQuery),
                     onCompleted: (dynamic value){
-                      reset();
-                      setFormState(ACTIVITY_FORM_STATE.OPEN);
-                      showResultDialog('Activity Added!');
+
+                      if(_formState != ACTIVITY_FORM_STATE.FAIL) {
+                        //reset();
+                        setFormState(ACTIVITY_FORM_STATE.OPEN);
+                        showResultDialog('Activity Added!');
+                      }
                     },
                     onError:  (dynamic value){
+                      setFormState(ACTIVITY_FORM_STATE.FAIL);
                       showResultDialog('Pasensya.Please check WIFI and retry');
                     }
                   ),
@@ -218,13 +258,15 @@ class AddActivityState extends State<AddActivityPage>{
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
-                      Text('Promotional Image',
+                      Text('Promotional Image (Ideally Landscape)',
                         style: TextStyle(fontSize: 15),
                       ),
                       FlatButton(
-                        child: Icon(Icons.image,
+                        child: _eventImage == null ? Icon(Icons.image,
                           size: 150,
-                        ),
+                        ) : Image.file(_eventImage),
+                        onPressed: getImage,
+                        autofocus: true,
                       )
                     ],
                   ),
@@ -247,6 +289,7 @@ class AddActivityState extends State<AddActivityPage>{
                 height: 180,
                 child: TextFormField(
                   maxLines: 10,
+                  autofocus: true,
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     hintText: ' Description...',
@@ -277,6 +320,8 @@ class AddActivityState extends State<AddActivityPage>{
                         if (_formKey.currentState.validate()) {
                           _formKey.currentState.save();
                           setFormState(ACTIVITY_FORM_STATE.LOADING);
+                          print(_activity.image.runtimeType);
+                          print("${_activity.image}");
                           addActivity({
                             'event_name' : _activity.eventName,
                             'venue' : _activity.venue,
@@ -284,9 +329,10 @@ class AddActivityState extends State<AddActivityPage>{
                             'end_date': _activity.endDate,
                             'start_time': _activity.startTime,
                             'end_time': _activity.endTime,
-                            'image' : "place holder image",
+                            'image' : _activity.image,
                             'description' :  _activity.description
                           });
+
                         }
                       },
                       child: Text('Submit'),

@@ -1,3 +1,6 @@
+import 'dart:io' as Io;
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'package:graphql_flutter/graphql_flutter.dart';
@@ -11,7 +14,7 @@ class ActivityState extends State<Activities>{
     return Query(
       options: QueryOptions(
           document: activityQuery,
-          pollInterval: 30
+          pollInterval: 60000
       ),
       builder: (QueryResult result, {FetchMore fetchMore, VoidCallback refetch}){
         if (result.hasException) {
@@ -24,6 +27,11 @@ class ActivityState extends State<Activities>{
 
         List<dynamic> activities = result.data['activities'];
 
+        print(activities.length);
+        if (activities.length == 0){
+          return Text('No Data lol');
+        }
+
         return ListView.builder(
             itemCount: activities.length,
             itemBuilder: (context,index){
@@ -35,8 +43,7 @@ class ActivityState extends State<Activities>{
                   child: Column (
                     children: <Widget>[
                       FittedBox (
-                        child: Image.asset (
-                          'assets/trialimage.jpeg',
+                        child:  Image.memory(base64.decode(activities[index]['image_base_64']),
                           fit: BoxFit.fitWidth,
                           width: 500.00,
                           height: 300.00,
@@ -46,9 +53,9 @@ class ActivityState extends State<Activities>{
                       Container (
                         height: 50.0,
                         child: ListTile (
-                          title: Text (activities[index]['title']),
+                          title: Text (activities[index]['event_name']),
                           trailing: Text (
-                            activities[index]['date'],
+                            activities[index]['start_date'],
                             style: TextStyle (color: Colors.grey),
                           ),
                         ),
