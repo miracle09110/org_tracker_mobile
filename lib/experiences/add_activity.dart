@@ -13,7 +13,6 @@ import '../enum/form_state.dart';
 
 class AddActivityState extends State<AddActivityPage>{
 
-  String apiEndPoint = "http://18.139.217.149:1973/api/v1.0.0/image";
   GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   ACTIVITY_FORM_STATE _formState = ACTIVITY_FORM_STATE.OPEN;
   Activity _activity = new Activity();

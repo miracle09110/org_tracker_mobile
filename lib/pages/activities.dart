@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:org_tracker/integrations/graphql/queries/read_activities.dart';
+import 'activity.dart';
 
 class ActivityState extends State<Activities>{
 
@@ -35,7 +36,29 @@ class ActivityState extends State<Activities>{
         return ListView.builder(
             itemCount: activities.length,
             itemBuilder: (context,index){
-              return Card (
+              final Image eventImage =  Image.memory(base64.decode(activities[index]['image_base_64']),
+                          fit: BoxFit.fitWidth,
+                          width: 500.00,
+                          height: 300.00,
+                        );
+
+              return GestureDetector(
+                onTap: () =>{
+                  Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => 
+                  ActivityPage(
+                    eventName: activities[index]['event_name'],
+                    venue: activities[index]['venue'],
+                    startDate: activities[index]['start_date'],
+                    endDate: activities[index]['end_date'],
+                    startTime: activities[index]['start_time'],
+                    endTime: activities[index]['end_time'],
+                    description: activities[index]['description'],
+                    image: eventImage
+                  )),
+                  )
+                },
+                child: Card (
                 semanticContainer: true,
                 clipBehavior: Clip.antiAliasWithSaveLayer,
                 child: Padding (
@@ -43,11 +66,7 @@ class ActivityState extends State<Activities>{
                   child: Column (
                     children: <Widget>[
                       FittedBox (
-                        child:  Image.memory(base64.decode(activities[index]['image_base_64']),
-                          fit: BoxFit.fitWidth,
-                          width: 500.00,
-                          height: 300.00,
-                        ),
+                        child:  eventImage
                       ),
 
                       Container (
@@ -68,6 +87,7 @@ class ActivityState extends State<Activities>{
                 ),
                 elevation: 5,
                 margin: EdgeInsets.all (10),
+                ),
               );
             }
         );
